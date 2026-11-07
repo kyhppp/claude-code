@@ -1,0 +1,659 @@
+<title>제작 샘플 갤러리</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600&amp;display=swap">
+<style id="app-style">
+/* 레이아웃: 사진이 주인공인 카탈로그 격자 + 상세 창(사진 갤러리 | 주문 사양표) */
+/* 흰 바탕 + 귤색 포인트로 고정한 밝은 화면 (어두운 모드 없음) */
+:root {
+  color-scheme:light;
+  --bg:#ffffff; --surface:#ffffff; --ink:#2a211b; --muted:#6f625a; --line:#efe6df;
+  --accent:#ff8a1f; --accent-ink:#2a1500; --accent-soft:#fff2e5; --accent-text:#b4530a; --danger:#b42318;
+  --veil:rgba(30,20,12,.55); --ph:#f7f2ee; --chip-bg:rgba(20,14,10,.66); --chip-ink:#ffffff;
+  --display:"Gowun Batang","Nanum Myeongjo",serif;
+  --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+}
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+html.locked { overflow:hidden; }
+body { background:var(--bg); color:var(--ink); font-family:var(--body); font-size:15px; line-height:1.6; }
+.wrap { max-width:1120px; margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { text-wrap:balance; }
+.pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* 버튼 */
+.btn { font:inherit; font-size:.9rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink); cursor:pointer; white-space:nowrap; }
+.btn:hover:not(:disabled) { border-color:var(--accent); }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:600; }
+.btn.ghost { background:transparent; }
+.btn.danger { color:var(--danger); border-color:var(--danger); background:transparent; }
+.btn.danger.solid { background:var(--danger); color:var(--surface); }
+.btn.tiny { font-size:.82rem; padding:4px 10px; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, .drop:focus-within {
+  outline:3px solid var(--accent); outline-offset:2px; }
+
+/* 편집 막대 (편집 권한이 있는 사람에게만) */
+.editbar { background:var(--accent-soft); border-bottom:1px solid var(--line); }
+.editbar-in { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding-block:10px; }
+.editbar .mode { font-size:.88rem; color:var(--muted); }
+.editbar .mode b { color:var(--ink); }
+.editbar-actions { display:flex; flex-wrap:wrap; gap:8px; }
+
+/* 머리말 */
+.top { padding-block:44px 22px; }
+.top h1 { font-family:var(--display); font-weight:700; font-size:clamp(1.9rem, 5vw, 2.7rem); line-height:1.2; margin:0; }
+.top .intro { margin:10px 0 0; max-width:62ch; color:var(--muted); }
+.contact { margin:16px 0 0; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.contact .k { font-size:.78rem; letter-spacing:.06em; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:1px 10px; }
+.contact .v { font-weight:600; user-select:all; overflow-wrap:anywhere; }
+
+/* 목록 */
+.count { font-size:.85rem; color:var(--muted); padding-block:4px 12px; border-top:1px solid var(--line); padding-top:14px; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap:20px; padding-bottom:64px; }
+.card { position:relative; background:var(--surface); border:1px solid var(--line); border-radius:10px; overflow:hidden; min-width:0; }
+.card-hit { display:block; width:100%; padding:0; margin:0; border:0; background:none; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.card-hit:focus-visible { outline-offset:-3px; }
+.ph { position:relative; aspect-ratio:4/5; background:var(--ph); display:grid; place-items:center; max-width:100%; }
+.ph img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.noph { color:var(--muted); font-size:.85rem; }
+.badge { position:absolute; left:10px; bottom:10px; background:var(--chip-bg); color:var(--chip-ink); font-size:.75rem; padding:2px 9px; border-radius:999px; }
+.badge.ex { top:10px; bottom:auto; background:var(--accent); color:var(--accent-ink); }
+.cbody { padding:14px 16px 16px; display:flex; flex-direction:column; gap:2px; }
+.cbody h2 { font-family:var(--display); font-size:1.15rem; line-height:1.35; margin:0; overflow-wrap:anywhere; }
+.price { font-weight:600; font-variant-numeric:tabular-nums; margin:0; }
+.period { margin:0; color:var(--muted); font-size:.86rem; }
+.card-tools { position:absolute; top:10px; right:10px; }
+.empty { border:1px dashed var(--line); border-radius:12px; padding:40px 20px; text-align:center; color:var(--muted); margin-bottom:64px; }
+.empty .btn { margin-top:12px; }
+
+/* 창 */
+.veil { position:fixed; inset:0; z-index:50; background:var(--veil); display:flex; align-items:center; justify-content:center;
+  padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.panel { position:relative; background:var(--surface); color:var(--ink); border-radius:14px; width:min(100%, 1000px); max-height:100%; overflow:auto; outline:none; }
+.x-close { position:absolute; top:10px; right:10px; z-index:3; width:38px; height:38px; border-radius:50%; border:1px solid var(--line);
+  background:var(--surface); color:var(--ink); font-size:1rem; cursor:pointer; }
+
+/* 상세 */
+.detail { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr); }
+.gal { padding:16px; min-width:0; }
+.stage { position:relative; aspect-ratio:1/1; background:var(--ph); border-radius:10px; overflow:hidden; display:grid; place-items:center; max-width:100%; }
+.stage img { width:100%; height:100%; object-fit:contain; }
+.nav { position:absolute; top:50%; transform:translateY(-50%); width:42px; height:42px; border-radius:50%; border:0;
+  background:var(--chip-bg); color:var(--chip-ink); font-size:1.1rem; cursor:pointer; }
+.nav.prev { left:10px; } .nav.next { right:10px; }
+.counter { position:absolute; right:10px; bottom:10px; background:var(--chip-bg); color:var(--chip-ink); font-size:.78rem;
+  padding:2px 9px; border-radius:999px; font-variant-numeric:tabular-nums; }
+.thumbs { display:flex; gap:8px; overflow-x:auto; padding:10px 2px 2px; }
+.thumb { flex:none; width:64px; height:64px; padding:0; border:2px solid transparent; border-radius:8px; overflow:hidden; background:var(--ph); cursor:pointer; }
+.thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+.thumb[aria-current="true"] { border-color:var(--accent); }
+.info { padding:28px 28px 28px 12px; min-width:0; display:flex; flex-direction:column; gap:6px; }
+.info h2 { font-family:var(--display); font-size:1.7rem; line-height:1.3; margin:0; padding-right:40px; overflow-wrap:anywhere; }
+.info .price { font-size:1.25rem; }
+.tag { align-self:flex-start; font-size:.75rem; background:var(--accent); color:var(--accent-ink); padding:1px 9px; border-radius:999px; }
+.spec { margin:14px 0 4px; border-top:1px solid var(--line); }
+.spec > div { display:grid; grid-template-columns:8.5em minmax(0, 1fr); gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+.spec dt { color:var(--muted); font-size:.86rem; padding-top:1px; }
+.spec dd { margin:0; }
+.desc h3 { font-size:.86rem; color:var(--muted); font-weight:500; margin:14px 0 4px; letter-spacing:.04em; }
+.desc p { margin:0; }
+.ask { margin:16px 0 0; padding:12px 14px; background:var(--accent-soft); border-radius:8px; font-size:.92rem; overflow-wrap:anywhere; }
+.owner-tools { margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.confirm { flex-basis:100%; display:flex; flex-wrap:wrap; gap:8px; align-items:center; font-size:.9rem; }
+
+/* 입력 양식 */
+.form { padding:26px 24px 22px; display:flex; flex-direction:column; gap:16px; max-width:720px; margin:0 auto; }
+.form h2 { font-family:var(--display); font-size:1.5rem; margin:0; padding-right:44px; }
+.field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.field > label, .field .lbl { font-weight:600; font-size:.9rem; }
+.field small { font-weight:400; color:var(--muted); }
+.field input[type=text], .field textarea { font:inherit; font-size:16px; width:100%; padding:10px 12px; border:1px solid var(--line);
+  border-radius:8px; background:var(--bg); color:var(--ink); }
+.field textarea { resize:vertical; }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.photo-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; }
+.pitem { position:relative; aspect-ratio:1/1; border-radius:8px; overflow:hidden; background:var(--ph); max-width:100%; }
+.pitem img { width:100%; height:100%; object-fit:cover; display:block; }
+.pitem .first { position:absolute; top:6px; left:6px; font-size:.7rem; background:var(--accent); color:var(--accent-ink); padding:0 7px; border-radius:999px; }
+.pitem .ptools { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:space-between; background:var(--chip-bg); }
+.pitem .ptools button { flex:1; border:0; background:none; color:var(--chip-ink); padding:5px 0; cursor:pointer; font-size:.85rem; }
+.pitem .ptools button:disabled { opacity:.3; cursor:default; }
+.drop { display:block; border:2px dashed var(--line); border-radius:10px; padding:18px; text-align:center; color:var(--muted); cursor:pointer; }
+.drop.over { border-color:var(--accent); background:var(--accent-soft); color:var(--ink); }
+.hint { margin:0; font-size:.86rem; color:var(--muted); min-height:1.2em; }
+.msg { margin:0; font-size:.9rem; color:var(--danger); min-height:1.2em; }
+.msg.ok { color:var(--accent-text); }
+
+/* 카카오톡 채널 문의 */
+.kakao-row { margin:18px 0 0; display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.kakao { display:inline-flex; align-items:center; gap:8px; font:inherit; font-weight:600; font-size:.95rem; text-decoration:none;
+  background:var(--accent); color:var(--accent-ink); border:1px solid var(--accent); border-radius:999px; padding:10px 18px; }
+a.kakao:hover { filter:brightness(.96); }
+.kakao .bubble { width:18px; height:18px; flex:none; }
+.kakao-hint { font-size:.85rem; color:var(--muted); }
+.owner-note { font-size:.85rem; color:var(--accent-text); margin:8px 0 0; }
+.form-actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+
+@media (max-width: 760px) {
+  .detail { grid-template-columns:minmax(0, 1fr); }
+  .gal { padding:12px 12px 0; }
+  .info { padding:16px 18px 24px; }
+  .info h2 { font-size:1.45rem; padding-right:0; }
+  .row2 { grid-template-columns:minmax(0, 1fr); }
+  .form { padding:22px 16px 18px; }
+  .spec > div { grid-template-columns:minmax(0, 1fr); gap:2px; }
+  .veil { padding:8px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } }
+</style>
+<div id="app"></div>
+<script type="application/json" id="app-data">{"site":{"title":"제작 샘플 갤러리","intro":"직접 만든 제작 샘플을 모아 두었어요. 마음에 드는 샘플을 눌러 자세한 내용을 확인해 보세요.","contact":"","kakaoName":"맹글다굿즈","kakaoUrl":""},"items":[{"id":"mw60z0c9ub7my","name":"여권지갑","price":"15000","period":"","needs":"","desc":"","photos":["3ff7970dfe812dbdc9961e87f5f0b2da","90911b63161a8ea0af9dd3a9c7024c85","d536e235e9a012fcf9cac799851cb9c0"]},{"id":"example1","name":"접시","price":"15000","period":"주문 후 7~10일","needs":"원하는 문구, 수량을 알려 주세요.","desc":"화이트 접시에 내가 원하는 이미지를 인쇄해보세요~","photos":["6498672435cb61405fd5158f86e985f2"]}]}</script>
+<script id="app-script">
+(function () {
+  // ---------- 페이지 원본 (저장할 때 이 내용으로 페이지 전체를 다시 만듭니다) ----------
+  const SCRIPT_TEXT = document.currentScript.textContent;
+  const STYLE_TEXT = document.getElementById('app-style').textContent;
+  const PAGE_TITLE = '제작 샘플 갤러리';
+  const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600&amp;display=swap';
+  const RESET = ':root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}'
+    + 'html{scroll-padding-top:env(safe-area-inset-top,0px)}'
+    + 'body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}'
+    + 'img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}';
+
+  function readState() {
+    try {
+      const s = JSON.parse(document.getElementById('app-data').textContent);
+      if (s && s.site && Array.isArray(s.items)) return s;
+    } catch (e) {}
+    return { site: { title: PAGE_TITLE, intro: '', contact: '' }, items: [] };
+  }
+  function buildDocument(s) {
+    const json = JSON.stringify(s).replace(/</g, '\\u003c');
+    return '<!doctype html><html><head><meta charset=utf8>'
+      + '<meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">'
+      + '<style>' + RESET + '</style></head><body>'
+      + '<title>' + PAGE_TITLE + '</title>\n'
+      + '<meta name="claude:viewport-fit-sides" content="cover">\n'
+      + '<link rel="stylesheet" href="' + FONT_HREF + '">\n'
+      + '<style id="app-style">' + STYLE_TEXT + '</style>\n'
+      + '<div id="app"></div>\n'
+      + '<script type="application/json" id="app-data">' + json + '<\/script>\n'
+      + '<script id="app-script">' + SCRIPT_TEXT + '<\/script>\n'
+      + '</body></html>';
+  }
+
+  let state = readState();
+  let artifactApi = null, assetsApi = null;
+  let canEdit = false;    // 편집 권한이 있는 사람인지
+  let preview = false;    // 편집자가 '손님 화면 보기'를 켰는지
+  const editing = () => canEdit && !preview;
+
+  const app = document.getElementById('app');
+  const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // 사진은 claude.ai 사진 저장소의 id 이거나, 페이지 안에 넣은 data: 주소예요.
+  const photoUrl = p => String(p).startsWith('data:image/') ? p : '/_blob/' + p;
+  const byId = id => state.items.find(it => it.id === id);
+
+  // 카카오톡 채널: 주소가 있으면 바로 연결, 없으면 채널 이름 검색 안내
+  const BUBBLE = '<svg class="bubble" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.6 2 11c0 2.8 1.8 5.3 4.6 6.7L5.7 21l3.9-2.6c.8.1 1.6.2 2.4.2 5.5 0 10-3.6 10-8S17.5 3 12 3z"/></svg>';
+  const safeKakaoUrl = u => /^https:\/\/([a-z0-9-]+\.)*kakao\.com\//i.test(String(u || '').trim()) ? String(u).trim() : '';
+  function kakaoHtml() {
+    const s = state.site, name = (s.kakaoName || '').trim(), url = safeKakaoUrl(s.kakaoUrl);
+    if (!name && !url) return '';
+    if (url) return `<p class="kakao-row"><a class="kakao" href="${esc(url)}" target="_blank" rel="noopener">${BUBBLE}카카오톡 채널 ${name ? `'${esc(name)}'` : ''}로 문의하기</a></p>`;
+    return `<p class="kakao-row"><span class="kakao">${BUBBLE}카카오톡에서 '${esc(name)}' 채널 검색</span>
+      <button class="btn tiny" type="button" data-action="copy-kakao">채널 이름 복사</button></p>
+      ${editing() ? `<p class="owner-note">'가게 정보 수정'에 채널 주소(pf.kakao.com/…)를 넣으면 누르자마자 채널로 연결돼요.</p>` : ''}`;
+  }
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  // ---------- 목록 화면 ----------
+  function render() {
+    const s = state.site, ed = editing();
+    const bar = canEdit ? `
+      <div class="editbar"><div class="wrap editbar-in">
+        <span class="mode">${ed ? '<b>편집 중</b> · 이 막대와 수정 버튼은 손님에게 보이지 않아요' : '<b>손님 화면</b>으로 보는 중'}</span>
+        <div class="editbar-actions">
+          ${ed ? '<button class="btn" type="button" data-action="site">가게 정보 수정</button><button class="btn primary" type="button" data-action="new">+ 샘플 추가</button>' : ''}
+          <button class="btn ghost" type="button" data-action="preview">${ed ? '손님 화면 보기' : '편집으로 돌아가기'}</button>
+        </div>
+      </div></div>` : '';
+    const items = state.items;
+    const list = items.length
+      ? `<div class="grid">${items.map(card).join('')}</div>`
+      : `<div class="empty">${ed
+          ? '아직 샘플이 없어요. 사진과 설명을 넣어 첫 샘플을 추가해 보세요.<br><button class="btn primary" type="button" data-action="new">+ 샘플 추가</button>'
+          : '아직 등록된 샘플이 없어요.'}</div>`;
+    app.innerHTML = `${bar}
+      <header class="top wrap">
+        <h1>${esc(s.title || PAGE_TITLE)}</h1>
+        ${s.intro ? `<p class="intro pre">${esc(s.intro)}</p>` : ''}
+        ${s.contact ? `<p class="contact"><span class="k">문의</span><span class="v" id="contact-text">${esc(s.contact)}</span>
+          <button class="btn tiny" type="button" data-action="copy-contact">복사</button></p>` : ''}
+        ${kakaoHtml()}
+      </header>
+      <main class="wrap">
+        ${items.length ? `<div class="count">샘플 ${items.length}개</div>` : ''}
+        ${list}
+      </main>`;
+  }
+  function card(it) {
+    const cover = it.photos && it.photos[0];
+    return `<article class="card">
+      <button class="card-hit" type="button" data-action="open" data-id="${esc(it.id)}">
+        <div class="ph">
+          ${cover ? `<img src="${photoUrl(cover)}" alt="${esc(it.name)} 대표 사진" loading="lazy">` : '<span class="noph">사진 없음</span>'}
+          ${it.example ? '<span class="badge ex">예시</span>' : ''}
+          ${it.photos.length > 1 ? `<span class="badge">사진 ${it.photos.length}장</span>` : ''}
+        </div>
+        <div class="cbody">
+          <h2>${esc(it.name || '이름 없음')}</h2>
+          <p class="price">${esc(it.price || '가격 문의')}</p>
+          ${it.period ? `<p class="period">제작기간 ${esc(it.period)}</p>` : ''}
+        </div>
+      </button>
+      ${editing() ? `<div class="card-tools"><button class="btn tiny" type="button" data-action="edit" data-id="${esc(it.id)}">수정</button></div>` : ''}
+    </article>`;
+  }
+
+  // 사진을 불러오지 못하면 자리 표시로 바꿉니다.
+  document.addEventListener('error', e => {
+    const t = e.target;
+    if (t && t.tagName === 'IMG' && t.closest('#app, .veil')) {
+      const span = document.createElement('span');
+      span.className = 'noph';
+      span.textContent = '사진을 불러오지 못했어요';
+      t.replaceWith(span);
+    }
+  }, true);
+
+  // ---------- 창(상세 / 입력) ----------
+  const veil = document.createElement('div');
+  veil.className = 'veil';
+  veil.hidden = true;
+  veil.innerHTML = '<div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-title" tabindex="-1"></div>';
+  document.body.appendChild(veil);
+  const panel = veil.firstChild;
+  let modal = null, lastFocus = null;
+
+  function openModal(html, info) {
+    if (veil.hidden) lastFocus = document.activeElement;
+    modal = info;
+    panel.innerHTML = '<button class="x-close" type="button" data-action="close" aria-label="닫기">✕</button>' + html;
+    veil.hidden = false;
+    document.documentElement.classList.add('locked');
+    panel.scrollTop = 0;
+    panel.focus();
+  }
+  function closeModal() {
+    if (modal && modal.type === 'edit' && modal.uploading) return;
+    veil.hidden = true;
+    modal = null;
+    panel.innerHTML = '';
+    document.documentElement.classList.remove('locked');
+    if (location.hash) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  // 상세 보기
+  function openDetail(id, idx) {
+    const it = byId(id);
+    if (!it) return;
+    openModal(detailHtml(it), { type: 'detail', id, idx: 0 });
+    setGal(idx || 0);
+    if (location.hash !== '#s-' + id) { try { history.replaceState(null, '', '#s-' + id); } catch (e) {} }
+  }
+  function detailHtml(it) {
+    const n = it.photos.length, c = state.site.contact;
+    const stage = n
+      ? `<img id="gal-img" src="${photoUrl(it.photos[0])}" alt="">
+         ${n > 1 ? `<button class="nav prev" type="button" data-action="gal-prev" aria-label="이전 사진">‹</button>
+           <button class="nav next" type="button" data-action="gal-next" aria-label="다음 사진">›</button>
+           <span class="counter" id="gal-count"></span>` : ''}`
+      : '<span class="noph">사진 없음</span>';
+    const thumbs = n > 1
+      ? `<div class="thumbs">${it.photos.map((p, i) =>
+          `<button class="thumb" type="button" data-action="gal-go" data-i="${i}" aria-label="${i + 1}번째 사진"><img src="${photoUrl(p)}" alt="" loading="lazy"></button>`).join('')}</div>`
+      : '';
+    return `<div class="detail">
+      <div class="gal"><div class="stage">${stage}</div>${thumbs}</div>
+      <div class="info">
+        ${it.example ? '<span class="tag">예시</span>' : ''}
+        <h2 id="m-title">${esc(it.name || '이름 없음')}</h2>
+        <p class="price">${esc(it.price || '가격 문의')}</p>
+        <dl class="spec">
+          <div><dt>제작기간</dt><dd class="pre">${esc(it.period || '문의해 주세요')}</dd></div>
+          <div><dt>제작 시 필요 사항</dt><dd class="pre">${esc(it.needs || '-')}</dd></div>
+        </dl>
+        ${it.desc ? `<div class="desc"><h3>내용</h3><p class="pre">${esc(it.desc)}</p></div>` : ''}
+        ${c ? `<p class="ask">주문·문의: <b>${esc(c)}</b></p>` : ''}
+        ${kakaoHtml()}
+        ${editing() ? `<div class="owner-tools">
+            <button class="btn" type="button" data-action="edit" data-id="${esc(it.id)}">수정</button>
+            <button class="btn danger" type="button" data-action="ask-delete">삭제</button>
+            <div class="confirm" id="del-confirm" hidden>
+              <span>이 샘플을 지울까요? 손님 화면에서도 사라져요.</span>
+              <button class="btn danger solid" type="button" data-action="delete" data-id="${esc(it.id)}">지우기</button>
+              <button class="btn ghost" type="button" data-action="cancel-delete">취소</button>
+            </div>
+            <p class="msg" id="d-msg" role="status"></p>
+          </div>` : ''}
+      </div>
+    </div>`;
+  }
+  function setGal(i) {
+    if (!modal || modal.type !== 'detail') return;
+    const it = byId(modal.id);
+    const n = it ? it.photos.length : 0;
+    if (!n) return;
+    modal.idx = ((i % n) + n) % n;
+    const img = document.getElementById('gal-img');
+    if (img) { img.src = photoUrl(it.photos[modal.idx]); img.alt = `${it.name} 사진 ${modal.idx + 1}/${n}`; }
+    const cnt = document.getElementById('gal-count');
+    if (cnt) cnt.textContent = `${modal.idx + 1} / ${n}`;
+    panel.querySelectorAll('.thumb').forEach((t, k) => t.setAttribute('aria-current', String(k === modal.idx)));
+  }
+  function openFromHash() {
+    const m = location.hash.match(/^#s-([A-Za-z0-9]+)$/);
+    if (m && byId(m[1])) { if (!modal || modal.id !== m[1]) openDetail(m[1]); }
+    else if (modal && modal.type === 'detail') closeModal();
+  }
+
+  // 샘플 입력 양식
+  function openEdit(id) {
+    const it = id ? byId(id) : null;
+    const d = it || { name: '', price: '', period: '', needs: '', desc: '', photos: [] };
+    openModal(`<form class="form" id="edit-form" novalidate>
+      <h2 id="m-title">${it ? '샘플 수정' : '새 샘플 추가'}</h2>
+      <div class="field">
+        <span class="lbl">사진 <small>여러 장 넣을 수 있어요 · 첫 번째 사진이 대표 사진이에요</small></span>
+        <div class="photo-list" id="f-photo-list"></div>
+        <label class="drop" id="f-drop" for="f-photos">사진 고르기 (또는 여기로 끌어 놓기)
+          <input class="sr-only" type="file" id="f-photos" accept="image/jpeg,image/png,image/webp,image/gif,image/heic" multiple>
+        </label>
+        <p class="hint" id="f-upload-msg" role="status"></p>
+      </div>
+      <div class="field"><label for="f-name">상품명</label>
+        <input type="text" id="f-name" maxlength="60" value="${esc(d.name)}" placeholder="예: 레터링 케이크 2호" required></div>
+      <div class="row2">
+        <div class="field"><label for="f-price">가격</label>
+          <input type="text" id="f-price" maxlength="40" value="${esc(d.price)}" placeholder="예: 45,000원 / 30,000원부터"></div>
+        <div class="field"><label for="f-period">제작기간</label>
+          <input type="text" id="f-period" maxlength="40" value="${esc(d.period)}" placeholder="예: 주문 후 7~10일"></div>
+      </div>
+      <div class="field"><label for="f-needs">제작 시 필요 사항</label>
+        <textarea id="f-needs" rows="3" maxlength="600" placeholder="예: 원하는 문구, 색상, 크기, 수량, 받는 날짜">${esc(d.needs)}</textarea></div>
+      <div class="field"><label for="f-desc">내용</label>
+        <textarea id="f-desc" rows="5" maxlength="2000" placeholder="재료, 크기, 특징 등 자세한 설명">${esc(d.desc)}</textarea></div>
+      <p class="msg" id="f-msg" role="status"></p>
+      <div class="form-actions">
+        <button class="btn ghost" type="button" data-action="close">취소</button>
+        <button class="btn primary" type="submit" id="f-save">저장하기</button>
+      </div>
+    </form>`, { type: 'edit', id: it ? it.id : null, photos: d.photos.slice(), uploading: 0 });
+
+    renderDraftPhotos();
+    const form = document.getElementById('edit-form');
+    form.addEventListener('submit', saveItem);
+    document.getElementById('f-photos').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+    const drop = document.getElementById('f-drop');
+    drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  }
+  function renderDraftPhotos() {
+    const box = document.getElementById('f-photo-list');
+    if (!box || !modal) return;
+    const ps = modal.photos, n = ps.length;
+    box.innerHTML = ps.map((p, i) => `<div class="pitem">
+      <img src="${photoUrl(p)}" alt="${i + 1}번째 사진">
+      ${i === 0 ? '<span class="first">대표</span>' : ''}
+      <div class="ptools">
+        <button type="button" data-action="ph-left" data-i="${i}" aria-label="앞으로" ${i === 0 ? 'disabled' : ''}>←</button>
+        <button type="button" data-action="ph-del" data-i="${i}" aria-label="이 사진 빼기">✕</button>
+        <button type="button" data-action="ph-right" data-i="${i}" aria-label="뒤로" ${i === n - 1 ? 'disabled' : ''}>→</button>
+      </div></div>`).join('');
+  }
+
+  // 큰 사진은 올리기 전에 줄여서(긴 변 2400px, JPG) 빠르게 보이게 합니다.
+  // embed = true 이면 페이지 안에 넣을 사진이라 더 작게(긴 변 1600px) 항상 다시 저장해요.
+  async function prepareImage(file, embed) {
+    const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!embed && file.type === 'image/gif' && file.size <= 20 * 1024 * 1024) return file;
+    let bmp;
+    try { bmp = await createImageBitmap(file); }
+    catch (e) {
+      if (!embed && ok.includes(file.type) && file.size <= 20 * 1024 * 1024) return file;
+      throw new Error('열 수 없는 사진 형식이에요. JPG나 PNG로 바꿔서 올려 주세요.');
+    }
+    const MAX = embed ? 1600 : 2400, scale = Math.min(1, MAX / Math.max(bmp.width, bmp.height));
+    if (!embed && scale === 1 && ok.includes(file.type) && file.size <= 3 * 1024 * 1024) { if (bmp.close) bmp.close(); return file; }
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bmp, 0, 0, w, h);
+    if (bmp.close) bmp.close();
+    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', embed ? 0.8 : 0.86));
+    if (!blob) throw new Error('사진을 줄이지 못했어요. 다른 사진으로 해 주세요.');
+    return blob;
+  }
+  const toDataUrl = blob => new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(new Error('사진을 읽지 못했어요.'));
+    fr.readAsDataURL(blob);
+  });
+  async function addFiles(fileList) {
+    const files = Array.from(fileList || []).filter(f => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
+    if (!files.length || !modal || modal.type !== 'edit') return;
+    const msg = document.getElementById('f-upload-msg'), save = document.getElementById('f-save');
+    if (!canEdit) { msg.textContent = '이 화면에서는 사진을 올릴 수 없어요.'; return; }
+    const m = modal;
+    m.uploading++;
+    save.disabled = true;
+    const errors = [];
+    for (let i = 0; i < files.length; i++) {
+      if (modal !== m) break;
+      msg.textContent = `사진 올리는 중… (${i + 1}/${files.length})`;
+      try {
+        if (assetsApi) {
+          const blob = await prepareImage(files[i], false);
+          const res = await assetsApi.upload(blob, { type: blob.type || 'image/jpeg' });
+          m.photos.push(res.id);
+        } else {
+          // 사진 저장소를 쓸 수 없는 화면: 사진을 줄여서 페이지 안에 넣어요.
+          m.photos.push(await toDataUrl(await prepareImage(files[i], true)));
+        }
+        renderDraftPhotos();
+      } catch (err) {
+        const c = err && err.code;
+        errors.push(`${files[i].name}: ` + (
+          c === 'too_large' ? '파일이 너무 커요.' :
+          c === 'unsupported_type' ? '올릴 수 없는 형식이에요. JPG나 PNG로 해 주세요.' :
+          c === 'quota_or_state' ? '저장 공간이 가득 찼어요.' :
+          c === 'rate_limited' ? '너무 빠르게 올리고 있어요. 잠시 후 다시 해 주세요.' :
+          (err && err.message && !c) ? err.message : '올리지 못했어요.'));
+        if (c === 'rate_limited' || c === 'quota_or_state') break;
+      }
+    }
+    m.uploading--;
+    if (modal === m) {
+      if (!m.uploading) save.disabled = false;
+      msg.textContent = errors.length ? errors.join(' / ') : '사진을 올렸어요. 다 넣었으면 저장하기를 눌러 주세요.';
+    }
+  }
+  async function saveItem(e) {
+    e.preventDefault();
+    const m = modal, msg = document.getElementById('f-msg'), btn = document.getElementById('f-save');
+    if (m.uploading) { msg.textContent = '사진을 다 올린 다음 저장해 주세요.'; return; }
+    const v = id => document.getElementById(id).value.trim();
+    const name = v('f-name');
+    if (!name) { msg.textContent = '상품명을 입력해 주세요.'; document.getElementById('f-name').focus(); return; }
+    const item = { id: m.id || newId(), name, price: v('f-price'), period: v('f-period'),
+      needs: v('f-needs'), desc: v('f-desc'), photos: m.photos.slice() };
+    const items = state.items.slice();
+    const at = items.findIndex(x => x.id === item.id);
+    if (at >= 0) items[at] = item; else items.unshift(item);
+    await publishState({ site: state.site, items }, msg, btn, '#s-' + item.id);
+  }
+
+  // 가게 정보 양식
+  function openSite() {
+    const s = state.site;
+    openModal(`<form class="form" id="site-form" novalidate>
+      <h2 id="m-title">가게 정보 수정</h2>
+      <div class="field"><label for="s-title">사이트 제목</label>
+        <input type="text" id="s-title" maxlength="40" value="${esc(s.title)}" placeholder="예: 하루공방 제작 샘플"></div>
+      <div class="field"><label for="s-intro">소개 글</label>
+        <textarea id="s-intro" rows="3" maxlength="300" placeholder="손님에게 보여줄 짧은 소개">${esc(s.intro)}</textarea></div>
+      <div class="field"><label for="s-contact">문의 방법 <small>전화번호, 카카오톡 아이디, 인스타그램 등</small></label>
+        <input type="text" id="s-contact" maxlength="80" value="${esc(s.contact)}" placeholder="예: 010-1234-5678"></div>
+      <div class="row2">
+        <div class="field"><label for="s-kakao-name">카카오톡 채널 이름</label>
+          <input type="text" id="s-kakao-name" maxlength="40" value="${esc(s.kakaoName || '')}" placeholder="예: 맹글다굿즈"></div>
+        <div class="field"><label for="s-kakao-url">카카오톡 채널 주소 <small>pf.kakao.com/… 으로 시작</small></label>
+          <input type="text" id="s-kakao-url" maxlength="200" value="${esc(s.kakaoUrl || '')}" placeholder="https://pf.kakao.com/_xxxxx/chat"></div>
+      </div>
+      <p class="msg" id="s-msg" role="status"></p>
+      <div class="form-actions">
+        <button class="btn ghost" type="button" data-action="close">취소</button>
+        <button class="btn primary" type="submit" id="s-save">저장하기</button>
+      </div>
+    </form>`, { type: 'site' });
+    document.getElementById('site-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const v = id => document.getElementById(id).value.trim();
+      let kakaoUrl = v('s-kakao-url');
+      if (kakaoUrl && !/^https?:\/\//i.test(kakaoUrl)) kakaoUrl = 'https://' + kakaoUrl;
+      kakaoUrl = kakaoUrl.replace(/^http:\/\//i, 'https://');
+      if (kakaoUrl && !safeKakaoUrl(kakaoUrl)) {
+        document.getElementById('s-msg').textContent = '카카오톡 채널 주소는 https://pf.kakao.com/ 으로 시작해야 해요.';
+        document.getElementById('s-kakao-url').focus();
+        return;
+      }
+      const site = { title: v('s-title') || PAGE_TITLE, intro: v('s-intro'), contact: v('s-contact'),
+        kakaoName: v('s-kakao-name'), kakaoUrl };
+      await publishState({ site, items: state.items }, document.getElementById('s-msg'), document.getElementById('s-save'));
+    });
+  }
+
+  // ---------- 저장: 페이지 전체를 새 버전으로 올립니다 ----------
+  async function publishState(next, msgEl, btn, hashAfter) {
+    if (!artifactApi) { msgEl.textContent = '이 화면에서는 저장할 수 없어요.'; return false; }
+    const label = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = '저장 중…'; }
+    msgEl.classList.remove('ok');
+    msgEl.textContent = '';
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const html = buildDocument(next);
+        if (html.length > 15 * 1024 * 1024) {
+          msgEl.textContent = '사진이 너무 많아서 저장할 수 없어요. 사진을 몇 장 빼 주세요.';
+          if (btn) { btn.disabled = false; btn.textContent = label; }
+          return false;
+        }
+        if (hashAfter) { try { history.replaceState(null, '', hashAfter); } catch (e) {} }
+        await artifactApi.publish(html);
+        state = next;
+        msgEl.classList.add('ok');
+        msgEl.textContent = '저장했어요. 페이지를 새로 불러오는 중이에요…';
+        return true;
+      } catch (err) {
+        const c = err && err.code;
+        if (c === 'upstream_error' && attempt === 0) { await new Promise(r => setTimeout(r, 700 + Math.random() * 800)); continue; }
+        if (c === 'conflict') msgEl.textContent = '다른 곳에서 먼저 저장된 내용이 있어서 새로 불러와요. 불러온 뒤 다시 해 주세요.';
+        else if (['not_writer', 'not_granted', 'consent_required', 'capability_disabled', 'capability_removed', 'not_declared'].includes(c)) {
+          msgEl.textContent = '이 화면에서는 저장할 권한이 없어요. 보기 전용 화면이에요.';
+          canEdit = false; render();
+        }
+        else if (c === 'too_large') msgEl.textContent = '내용이 너무 많아서 저장하지 못했어요. 설명을 조금 줄여 주세요.';
+        else if (c === 'rate_limited') msgEl.textContent = '저장을 너무 자주 했어요. 잠시 후 다시 눌러 주세요.';
+        else msgEl.textContent = '저장하지 못했어요. 잠시 후 다시 해 주세요.';
+        if (btn) { btn.disabled = false; btn.textContent = label; }
+        return false;
+      }
+    }
+    return false;
+  }
+
+  // ---------- 클릭 처리 ----------
+  document.addEventListener('click', async e => {
+    if (e.target === veil) { closeModal(); return; }
+    const el = e.target.closest('[data-action]');
+    if (!el) return;
+    const a = el.dataset.action, id = el.dataset.id, i = Number(el.dataset.i);
+    if (a === 'open') openDetail(id);
+    else if (a === 'close') closeModal();
+    else if (a === 'gal-prev') setGal(modal.idx - 1);
+    else if (a === 'gal-next') setGal(modal.idx + 1);
+    else if (a === 'gal-go') setGal(i);
+    else if (a === 'preview') { preview = !preview; render(); }
+    else if (a === 'new' && editing()) openEdit(null);
+    else if (a === 'edit' && editing()) openEdit(id);
+    else if (a === 'site' && editing()) openSite();
+    else if (a === 'ask-delete') { document.getElementById('del-confirm').hidden = false; }
+    else if (a === 'cancel-delete') { document.getElementById('del-confirm').hidden = true; }
+    else if (a === 'delete' && editing()) {
+      el.disabled = true;
+      const ok = await publishState({ site: state.site, items: state.items.filter(x => x.id !== id) }, document.getElementById('d-msg'), null);
+      if (!ok) el.disabled = false;
+    }
+    else if (a === 'ph-left' || a === 'ph-right' || a === 'ph-del') {
+      const ps = modal.photos;
+      if (a === 'ph-del') ps.splice(i, 1);
+      else { const j = a === 'ph-left' ? i - 1 : i + 1; [ps[i], ps[j]] = [ps[j], ps[i]]; }
+      renderDraftPhotos();
+    }
+    else if (a === 'copy-kakao') {
+      const text = state.site.kakaoName || '';
+      try { await navigator.clipboard.writeText(text); el.textContent = '복사했어요'; }
+      catch (err) { el.textContent = text; }
+      setTimeout(() => { el.textContent = '채널 이름 복사'; }, 2000);
+    }
+    else if (a === 'copy-contact') {
+      const text = state.site.contact;
+      try { await navigator.clipboard.writeText(text); el.textContent = '복사했어요'; }
+      catch (err) {
+        const r = document.createRange(); r.selectNodeContents(document.getElementById('contact-text'));
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        el.textContent = '선택됐어요. 복사해 주세요';
+      }
+      setTimeout(() => { el.textContent = '복사'; }, 2000);
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (veil.hidden) return;
+    if (e.key === 'Escape') closeModal();
+    else if (modal && modal.type === 'detail' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) {
+      if (e.key === 'ArrowLeft') setGal(modal.idx - 1);
+      if (e.key === 'ArrowRight') setGal(modal.idx + 1);
+    }
+  });
+  window.addEventListener('hashchange', openFromHash);
+
+  // ---------- 시작 ----------
+  render();
+  openFromHash();
+  (async () => {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    const use = name => Promise.resolve(window.claude.use(name)).catch(() => null);
+    const [a, s, u] = await Promise.all([use('artifact'), use('assets'), use('user')]);
+    artifactApi = a; assetsApi = s;
+    // 편집할 수 있는 사람인지 직접 물어봐요. 대답이 없으면 사진 올리기 권한으로 판단해요.
+    let ok = false;
+    if (u) { try { ok = (await u.canEdit()) || (await u.isOwner()); } catch (e) {} }
+    if (!ok && s) ok = true;
+    if (a && ok) {
+      canEdit = true;
+      render();
+      if (modal && modal.type === 'detail') openDetail(modal.id, modal.idx);
+    }
+  })();
+})();
+</script>
