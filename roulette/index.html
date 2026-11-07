@@ -40,6 +40,22 @@
   .result.pop .menu { animation:pop .45s ease-out; }
   @keyframes pop { 0% { transform:scale(.6); opacity:0; } 70% { transform:scale(1.08); } 100% { transform:scale(1); opacity:1; } }
 
+  /* 주문하러 가기 */
+  [hidden] { display:none !important; }
+  .order { width:min(100%, 520px); border:2px solid var(--edge); background:#fffaf5; border-radius:16px; padding:16px; text-align:center; }
+  .order-title { margin:0 0 12px; font-size:1.05rem; }
+  .order-title b { color:#b4530a; }
+  .order-apps { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; }
+  .app { font:inherit; font-weight:700; font-size:.95rem; padding:12px 6px; border-radius:12px; border:2px solid var(--y);
+    background:var(--w); color:var(--k); cursor:pointer; }
+  .app:hover { background:var(--soft); }
+  .app small { display:block; font-weight:400; font-size:.72rem; color:var(--g); margin-top:2px; }
+  .order-maps { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:10px; }
+  .order-maps a { font-size:.88rem; color:var(--k); text-decoration:none; border:1px solid var(--edge); border-radius:999px; padding:6px 12px; background:var(--w); }
+  .order-maps a:hover { background:var(--soft); }
+  .order-msg { margin:10px 0 0; font-size:.86rem; color:#b4530a; min-height:1.2em; }
+  .app:focus-visible, .order-maps a:focus-visible, .spin-btn:focus-visible { outline:3px solid var(--k); outline-offset:2px; }
+
   /* 오른쪽 목록 */
   aside { display:flex; flex-direction:column; gap:18px; min-width:0; }
   .card { border:2px solid var(--edge); border-radius:14px; padding:14px; background:var(--w); }
@@ -97,6 +113,19 @@
     <div class="result" id="result" aria-live="polite">
       <div class="label" id="resultLabel">버튼을 눌러 돌려 보세요</div>
       <div class="menu" id="resultMenu"></div>
+    </div>
+    <div class="order" id="order" hidden>
+      <p class="order-title"><b id="orderMenu"></b> 주문하러 가기</p>
+      <div class="order-apps">
+        <button class="app" type="button" data-app="baemin">배달의민족<small>앱 열기</small></button>
+        <button class="app" type="button" data-app="coupang">쿠팡이츠<small>앱 열기</small></button>
+        <button class="app" type="button" data-app="yogiyo">요기요<small>앱 열기</small></button>
+      </div>
+      <div class="order-maps">
+        <a id="kakaoMap" href="#" target="_blank" rel="noopener">카카오맵에서 근처 가게 찾기</a>
+        <a id="naverMap" href="#" target="_blank" rel="noopener">네이버 지도에서 찾기</a>
+      </div>
+      <p class="order-msg" id="orderMsg" role="status">버튼을 누르면 메뉴 이름이 복사돼요. 앱 검색창에 붙여넣기 하세요.</p>
     </div>
   </section>
 
@@ -247,7 +276,58 @@ function clearResult(text) {
   resultEl.classList.remove('pop');
   resultLabel.textContent = text;
   resultMenu.innerHTML = '';
+  hideOrder();
 }
+
+// ---------- 주문하러 가기 (배달 앱 / 지도) ----------
+// 배달 앱의 '검색 화면 바로 열기' 주소는 공개되어 있지 않아서,
+// 메뉴 이름을 복사해 두고 앱을 여는 방식이에요. 앱이 안 열리면 안내를 보여줘요.
+const ORDER_APPS = {
+  baemin:  { name: '배달의민족', open: 'baemin://' },
+  coupang: { name: '쿠팡이츠',   open: 'coupangeats://' },
+  yogiyo:  { name: '요기요',     open: 'yogiyo://' }
+};
+const isPhone = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const orderEl = $('order'), orderMenu = $('orderMenu'), orderMsg = $('orderMsg');
+let orderWhat = '', orderTimer = 0;
+function showOrder(what) {
+  orderWhat = what;
+  orderMenu.textContent = what;
+  $('kakaoMap').href = 'https://map.kakao.com/link/search/' + encodeURIComponent(what);
+  $('naverMap').href = 'https://map.naver.com/p/search/' + encodeURIComponent(what);
+  orderMsg.textContent = '버튼을 누르면 메뉴 이름이 복사돼요. 앱 검색창에 붙여넣기 하세요.';
+  orderEl.hidden = false;
+}
+function hideOrder() { orderEl.hidden = true; clearTimeout(orderTimer); }
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      const ok = document.execCommand('copy'); ta.remove(); return ok;
+    } catch (e2) { return false; }
+  }
+}
+orderEl.addEventListener('click', async e => {
+  const b = e.target.closest('[data-app]');
+  if (!b || !orderWhat) return;
+  const app = ORDER_APPS[b.dataset.app];
+  const copied = await copyText(orderWhat);
+  const copyNote = copied ? `'${orderWhat}'을(를) 복사했어요.` : `'${orderWhat}'을(를) 검색해 주세요.`;
+  if (!isPhone) {
+    orderMsg.textContent = `${copyNote} ${app.name} 앱은 휴대폰에서 열려요. 컴퓨터에서는 아래 지도 링크를 써 보세요.`;
+    return;
+  }
+  orderMsg.textContent = `${copyNote} ${app.name} 앱을 여는 중…`;
+  clearTimeout(orderTimer);
+  orderTimer = setTimeout(() => {
+    if (!document.hidden) orderMsg.textContent = `${app.name} 앱이 열리지 않았어요. 앱을 직접 열고 검색창에 붙여넣기 하세요. (${copyNote})`;
+  }, 1800);
+  location.href = app.open;
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) clearTimeout(orderTimer); });
 function showMsg(t) { menuMsg.textContent = t; }
 
 // 메뉴가 바뀌면 원판이 다시 그려지므로, 이전 결과는 지워서 화살표와 결과가 어긋나지 않게 합니다.
@@ -338,6 +418,7 @@ function spin() {
     resultMenu.innerHTML = `<span>${esc(what)}</span>`;
     void resultEl.offsetWidth;                       // 애니메이션 다시 시작
     resultEl.classList.add('pop');
+    showOrder(what);
 
     spinning = false;
     setLocked(false);
