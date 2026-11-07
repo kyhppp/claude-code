@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 뭐 먹지</title>
+<style>
+  /* 흰색 + 귤색 조합. --y 귤색(포인트), --soft 연한 귤색, --edge 귤색 테두리, --k 글자(진한 갈색) */
+  :root { --y:#ff8a1f; --soft:#ffe3c7; --edge:#f6c79a; --k:#2a211b; --w:#ffffff; --g:#7a6a5f; --line:#f3e6da; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:var(--w); color:var(--k);
+    font-family:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; }
+  body { overflow-x:hidden; }
+
+  header { max-width:1100px; margin:0 auto; padding:20px 16px 0; }
+  h1 { margin:0; font-size:1.6rem; display:flex; align-items:center; gap:.5rem; }
+  h1 .dot { width:16px; height:16px; background:var(--y); box-shadow:0 0 0 4px var(--soft); border-radius:50%; flex:none; }
+  .sub { margin:.3rem 0 0; color:var(--g); font-size:.95rem; }
+
+  main { max-width:1100px; margin:0 auto; padding:16px; display:grid;
+    grid-template-columns:minmax(0,1fr) 340px; gap:28px; align-items:start; }
+
+  /* 룰렛 영역 */
+  .stage { display:flex; flex-direction:column; align-items:center; gap:14px; min-width:0; }
+  .turn { font-size:1.05rem; text-align:center; }
+  .turn b { display:inline-block; background:var(--soft); padding:2px 12px; border:2px solid var(--y); border-radius:999px; }
+  .wheel-wrap { position:relative; width:min(100%, 520px); aspect-ratio:1/1; }
+  .wheel-wrap svg.wheel { width:100%; height:100%; display:block; }
+  .pointer { position:absolute; left:50%; top:-2%; transform:translateX(-50%); width:11%; z-index:2; }
+  .spin-btn { font:inherit; font-size:1.3rem; font-weight:800; padding:14px 52px; background:#e8730c; color:var(--w);
+    border:3px solid #e8730c; border-radius:999px; cursor:pointer; box-shadow:0 6px 0 #b4530a; }
+  .spin-btn:hover:not(:disabled) { background:#d9650a; border-color:#d9650a; }
+  .spin-btn:active:not(:disabled) { transform:translateY(3px); box-shadow:0 3px 0 #b4530a; }
+  .spin-btn:disabled { opacity:.5; cursor:not-allowed; }
+  .result { min-height:6rem; text-align:center; width:100%; }
+  .result .label { color:var(--g); font-size:.95rem; }
+  .result .menu { font-size:clamp(2.2rem, 8vw, 3.6rem); font-weight:900; line-height:1.15;
+    word-break:keep-all; overflow-wrap:anywhere; }
+  .result .menu span { background:linear-gradient(transparent 58%, var(--soft) 58%); padding:0 .12em; }
+  .result.pop .menu { animation:pop .45s ease-out; }
+  @keyframes pop { 0% { transform:scale(.6); opacity:0; } 70% { transform:scale(1.08); } 100% { transform:scale(1); opacity:1; } }
+
+  /* 오른쪽 목록 */
+  aside { display:flex; flex-direction:column; gap:18px; min-width:0; }
+  .card { border:2px solid var(--edge); border-radius:14px; padding:14px; background:var(--w); }
+  .card h2 { margin:0 0 10px; font-size:1.05rem; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+  .card h2 small { font-weight:400; color:var(--g); font-size:.82rem; }
+  .add { display:flex; gap:6px; }
+  input[type=text] { font:inherit; font-size:16px; width:100%; min-width:0; padding:9px 10px;
+    border:2px solid var(--edge); border-radius:8px; background:var(--w); color:var(--k); }
+  input[type=text]:focus { outline:3px solid var(--y); outline-offset:0; }
+  input:disabled { opacity:.5; }
+  .btn { font:inherit; padding:8px 14px; border:2px solid var(--y); background:var(--y); color:var(--k);
+    border-radius:8px; cursor:pointer; font-weight:700; white-space:nowrap; }
+  .btn.ghost { background:var(--w); color:var(--k); border-color:var(--edge); font-weight:400; font-size:.88rem; padding:6px 10px; }
+  .btn:disabled { opacity:.4; cursor:not-allowed; }
+  .msg { min-height:1.2em; margin:6px 0 0; font-size:.85rem; color:#b00000; }
+  ul { list-style:none; margin:6px 0 0; padding:0; }
+  .menus li { display:flex; align-items:center; gap:8px; padding:6px 2px; border-bottom:1px solid var(--line); }
+  .menus .sw { width:14px; height:14px; border:2px solid var(--y); border-radius:3px; flex:none; }
+  .menus .name { flex:1; min-width:0; overflow-wrap:anywhere; }
+  .x { border:none; background:none; color:var(--k); font-size:1.05rem; cursor:pointer; padding:2px 9px; border-radius:6px; }
+  .x:hover:not(:disabled) { background:var(--soft); }
+  .x:disabled { opacity:.2; cursor:not-allowed; }
+  .foot { display:flex; justify-content:flex-end; margin-top:10px; }
+  .people { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .people label { display:flex; align-items:center; gap:6px; font-size:.85rem; min-width:0; }
+  .people .n { width:1.5em; text-align:right; color:var(--g); flex:none; }
+  .people input[type=text] { padding:6px 8px; }
+  .people label.now input { background:var(--soft); border-color:var(--y); font-weight:700; }
+  .history li { padding:7px 2px; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
+  .history li:first-child { font-weight:700; }
+  .history li.empty { color:var(--g); border:none; font-weight:400; }
+
+  @media (max-width:760px) {
+    main { grid-template-columns:minmax(0,1fr); gap:20px; }
+    .wheel-wrap { width:min(100%, 440px); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot"></span>오늘 뭐 먹지?</h1>
+  <p class="sub">돌릴 때마다 차례가 다음 사람으로 넘어가요.</p>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="turn">이번 차례: <b id="turnName"></b></div>
+    <div class="wheel-wrap">
+      <svg class="pointer" viewBox="0 0 40 48" aria-hidden="true">
+        <polygon points="3,3 37,3 20,45" fill="#d9650a" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+      </svg>
+      <svg class="wheel" id="wheel" viewBox="0 0 400 400" role="img" aria-label="오늘 메뉴 룰렛"></svg>
+    </div>
+    <button class="spin-btn" id="spinBtn" type="button">돌리기</button>
+    <div class="result" id="result" aria-live="polite">
+      <div class="label" id="resultLabel">버튼을 눌러 돌려 보세요</div>
+      <div class="menu" id="resultMenu"></div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>메뉴 <small id="menuCount"></small></h2>
+      <div class="add">
+        <input type="text" id="menuInput" placeholder="메뉴 입력 후 Enter" maxlength="20" autocomplete="off">
+        <button class="btn" id="addBtn" type="button">추가</button>
+      </div>
+      <p class="msg" id="menuMsg"></p>
+      <ul class="menus" id="menuList"></ul>
+      <div class="foot"><button class="btn ghost" id="resetBtn" type="button">예시 메뉴로 초기화</button></div>
+    </div>
+
+    <div class="card">
+      <h2>사람 <small>칸을 눌러 이름을 고쳐요</small></h2>
+      <div class="people" id="people"></div>
+    </div>
+
+    <div class="card">
+      <h2>최근 결과 <small>최근 5개</small></h2>
+      <ul class="history" id="history"></ul>
+    </div>
+  </aside>
+</main>
+
+<script>
+// LOGIC-START  (각도 계산: 테스트에서도 이 부분만 떼어 검사합니다)
+// 각도는 12시 방향이 0도, 시계 방향으로 커집니다.
+// i번째 칸은 원판 위에서 [i*s, (i+1)*s) 범위를 차지합니다. (s = 360 / n)
+// 원판을 R도 돌리면, 화살표(12시) 밑에는 원판의 (-R)도 지점이 옵니다.
+function norm(a) { return ((a % 360) + 360) % 360; }
+function indexAt(rotation, n) {
+  const s = 360 / n;
+  return Math.min(n - 1, Math.floor(norm(-rotation) / s));
+}
+// 칸 k 안의 비율 f(0~1) 지점이 화살표 밑에서 멈추는 최종 회전값
+function targetRotation(current, n, k, f, spins) {
+  const s = 360 / n;
+  const want = norm(-(k + f) * s);
+  const delta = norm(want - norm(current));
+  return current + spins * 360 + delta;
+}
+function sliceColor(i, n) {
+  if (n % 2 === 1 && i === n - 1) return 'soft';   // 홀수일 때 마지막 칸은 연한 귤색
+  return i % 2 === 0 ? 'orange' : 'white';
+}
+// LOGIC-END
+
+const MIN_MENUS = 2, MAX_MENUS = 12, PEOPLE = 10, HISTORY = 5, DURATION = 3000;
+const DEFAULT_MENUS = ['김치찌개', '된장찌개', '돈까스', '짜장면', '비빔밥', '쌀국수', '햄버거', '초밥'];
+const defaultNames = () => Array.from({ length: PEOPLE }, (_, i) => `팀원${i + 1}`);
+const COLORS = { orange: '#ff8a1f', white: '#ffffff', soft: '#ffd2a6' };
+const INK = '#2a211b', EDGE = '#f0a560', DEEP = '#d9650a';
+const KEY = 'lunch-roulette-v1';
+
+// ---------- 저장 / 불러오기 (막혀 있어도 화면은 정상 작동) ----------
+function load() {
+  try { const raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
+  catch (e) { return null; }
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify({ menus, names, turn, history })); }
+  catch (e) { /* 저장 불가 환경: 무시 */ }
+}
+
+const saved = load() || {};
+let menus = Array.isArray(saved.menus) && saved.menus.every(m => typeof m === 'string' && m.trim())
+  && saved.menus.length >= MIN_MENUS && saved.menus.length <= MAX_MENUS ? saved.menus.slice() : DEFAULT_MENUS.slice();
+let names = Array.isArray(saved.names) && saved.names.length === PEOPLE && saved.names.every(n => typeof n === 'string')
+  ? saved.names.slice() : defaultNames();
+let turn = Number.isInteger(saved.turn) && saved.turn >= 0 && saved.turn < PEOPLE ? saved.turn : 0;
+let history = Array.isArray(saved.history)
+  ? saved.history.filter(h => h && typeof h.who === 'string' && typeof h.what === 'string').slice(0, HISTORY) : [];
+
+let rot = 0;          // 현재 원판 회전값(도)
+let spinning = false;
+
+// ---------- 요소 ----------
+const $ = id => document.getElementById(id);
+const wheelEl = $('wheel'), spinBtn = $('spinBtn'), resultEl = $('result');
+const resultLabel = $('resultLabel'), resultMenu = $('resultMenu');
+const menuInput = $('menuInput'), addBtn = $('addBtn'), menuMsg = $('menuMsg');
+const menuList = $('menuList'), menuCount = $('menuCount'), resetBtn = $('resetBtn');
+const peopleEl = $('people'), historyEl = $('history'), turnName = $('turnName');
+let rotorEl = null;
+
+const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const whoName = i => (names[i] || '').trim() || `팀원${i + 1}`;
+const shortLabel = s => { const a = Array.from(s); return a.length > 7 ? a.slice(0, 6).join('') + '…' : s; };
+
+// ---------- 원판 그리기 ----------
+function pt(r, deg) { const t = deg * Math.PI / 180; return [200 + r * Math.sin(t), 200 - r * Math.cos(t)]; }
+function drawWheel() {
+  const n = menus.length, s = 360 / n, R = 186;
+  const fs = n <= 6 ? 22 : n <= 9 ? 19 : 16;
+  let g = '';
+  for (let i = 0; i < n; i++) {
+    const a0 = i * s, a1 = (i + 1) * s, mid = a0 + s / 2;
+    const [x0, y0] = pt(R, a0), [x1, y1] = pt(R, a1);
+    const c = sliceColor(i, n);
+    g += `<path d="M200 200 L${x0.toFixed(3)} ${y0.toFixed(3)} A${R} ${R} 0 ${s > 180 ? 1 : 0} 1 ${x1.toFixed(3)} ${y1.toFixed(3)} Z"`
+       + ` fill="${COLORS[c]}" stroke="${EDGE}" stroke-width="2" stroke-linejoin="round"/>`;
+    g += `<text transform="rotate(${mid - 90} 200 200)" x="${200 + R - 16}" y="200" text-anchor="end"`
+       + ` dominant-baseline="central" fill="${INK}"`
+       + ` font-size="${fs}" font-weight="800">${esc(shortLabel(menus[i]))}</text>`;
+  }
+  wheelEl.innerHTML =
+    `<g id="rotor" transform="rotate(${rot} 200 200)">${g}</g>`
+    + `<circle cx="200" cy="200" r="${R + 3}" fill="none" stroke="${COLORS.orange}" stroke-width="8"/>`
+    + `<circle cx="200" cy="200" r="26" fill="${COLORS.orange}" stroke="${COLORS.white}" stroke-width="4"/>`
+    + `<circle cx="200" cy="200" r="9" fill="${COLORS.white}"/>`;
+  rotorEl = wheelEl.querySelector('#rotor');
+}
+function setRot(r) { rotorEl.setAttribute('transform', `rotate(${r} 200 200)`); }
+
+// ---------- 목록 그리기 ----------
+function renderMenus() {
+  const n = menus.length;
+  menuCount.textContent = `${n}개 · 2~12개`;
+  menuList.innerHTML = menus.map((m, i) =>
+    `<li><span class="sw" style="background:${COLORS[sliceColor(i, n)]}"></span>`
+    + `<span class="name">${esc(m)}</span>`
+    + `<button class="x" type="button" data-i="${i}" aria-label="${esc(m)} 지우기"`
+    + `${n <= MIN_MENUS || spinning ? ' disabled' : ''} title="${n <= MIN_MENUS ? '최소 2개는 있어야 해요' : '지우기'}">✕</button></li>`
+  ).join('');
+}
+function buildPeople() {
+  peopleEl.innerHTML = names.map((nm, i) =>
+    `<label><span class="n">${i + 1}</span><input type="text" data-i="${i}" maxlength="12" value="${esc(nm)}" placeholder="팀원${i + 1}"></label>`
+  ).join('');
+}
+function renderTurn() {
+  turnName.textContent = whoName(turn);
+  peopleEl.querySelectorAll('label').forEach((l, i) => l.classList.toggle('now', i === turn));
+}
+function renderHistory() {
+  historyEl.innerHTML = history.length
+    ? history.map(h => `<li>${esc(h.who)} · ${esc(h.what)}</li>`).join('')
+    : '<li class="empty">아직 결과가 없어요</li>';
+}
+function setLocked(on) {
+  spinBtn.disabled = on; menuInput.disabled = on; addBtn.disabled = on; resetBtn.disabled = on;
+  renderMenus();
+}
+function clearResult(text) {
+  resultEl.classList.remove('pop');
+  resultLabel.textContent = text;
+  resultMenu.innerHTML = '';
+}
+function showMsg(t) { menuMsg.textContent = t; }
+
+// 메뉴가 바뀌면 원판이 다시 그려지므로, 이전 결과는 지워서 화살표와 결과가 어긋나지 않게 합니다.
+function menusChanged() {
+  save(); drawWheel(); renderMenus();
+  clearResult('메뉴가 바뀌었어요. 다시 돌려 보세요');
+}
+
+// ---------- 메뉴 추가 / 삭제 ----------
+function addMenu() {
+  if (spinning) return;
+  const v = menuInput.value.trim().replace(/\s+/g, ' ');
+  if (!v) return showMsg('메뉴 이름을 입력해 주세요.');
+  if (menus.length >= MAX_MENUS) return showMsg('메뉴는 최대 12개까지 넣을 수 있어요.');
+  if (menus.includes(v)) return showMsg('이미 있는 메뉴예요.');
+  menus.push(v);
+  menuInput.value = '';
+  showMsg('');
+  menusChanged();
+}
+menuInput.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.isComposing || e.keyCode === 229) return;   // 한글 입력 중 Enter 가 두 번 처리되는 것 방지
+  e.preventDefault();
+  addMenu();
+});
+addBtn.addEventListener('click', addMenu);
+menuList.addEventListener('click', e => {
+  const b = e.target.closest('button.x');
+  if (!b || spinning) return;
+  if (menus.length <= MIN_MENUS) return showMsg('메뉴는 최소 2개가 있어야 해요.');
+  menus.splice(Number(b.dataset.i), 1);
+  showMsg('');
+  menusChanged();
+});
+resetBtn.addEventListener('click', () => {
+  if (spinning) return;
+  if (!confirm('메뉴를 예시 8개로 되돌릴까요?')) return;
+  menus = DEFAULT_MENUS.slice();
+  showMsg('');
+  menusChanged();
+});
+
+// ---------- 이름 고치기 ----------
+peopleEl.addEventListener('input', e => {
+  const inp = e.target.closest('input[data-i]');
+  if (!inp) return;
+  names[Number(inp.dataset.i)] = inp.value;
+  save(); renderTurn();
+});
+
+// ---------- 돌리기 ----------
+function spin() {
+  if (spinning) return;
+  spinning = true;
+  setLocked(true);
+  showMsg('');
+
+  const n = menus.length;
+  const k = Math.floor(Math.random() * n);          // 당첨 칸
+  const f = 0.15 + Math.random() * 0.7;              // 칸 안의 멈출 위치(경계선은 피함)
+  const spins = 5 + Math.floor(Math.random() * 2);   // 5~6바퀴
+  const start = rot, end = targetRotation(start, n, k, f, spins);
+  const who = whoName(turn);
+
+  clearResult(`${who} 님 차례… 돌아가는 중`);
+  const t0 = performance.now();
+  function frame(now) {
+    const t = Math.min(1, (now - t0) / DURATION);
+    const eased = 1 - Math.pow(1 - t, 4);            // 점점 느려지며 멈춤
+    setRot(start + (end - start) * eased);
+    if (t < 1) requestAnimationFrame(frame); else finish();
+  }
+  function finish() {
+    setRot(end);
+    // 실제로 멈춘 각도에서 화살표 밑 칸을 다시 계산해 결과로 씁니다.
+    const idx = indexAt(end, n);
+    const what = menus[idx];
+    rot = norm(end);
+    setRot(rot);
+
+    history.unshift({ who, what });
+    history = history.slice(0, HISTORY);
+    turn = (turn + 1) % PEOPLE;
+    save();
+
+    resultLabel.textContent = `${who} 님이 뽑은 메뉴`;
+    resultMenu.innerHTML = `<span>${esc(what)}</span>`;
+    void resultEl.offsetWidth;                       // 애니메이션 다시 시작
+    resultEl.classList.add('pop');
+
+    spinning = false;
+    setLocked(false);
+    renderTurn(); renderHistory();
+  }
+  requestAnimationFrame(frame);
+}
+spinBtn.addEventListener('click', spin);
+
+// ---------- 시작 ----------
+drawWheel();
+renderMenus();
+buildPeople();
+renderTurn();
+renderHistory();
+</script>
+</body>
+</html>
